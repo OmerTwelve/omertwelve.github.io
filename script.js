@@ -209,6 +209,172 @@
     sweep();
   }
 
+  /* ── RAG assistant ────────────────────────────────
+     Posts a question to the FastAPI backend and streams the answer back over
+     SSE. The backend holds the Anthropic key and does retrieval; nothing
+     secret is reachable from here. */
+  var ASK_ENDPOINT =
+    location.hostname === "localhost" || location.hostname === "127.0.0.1"
+      ? "http://localhost:8000/api/ask"
+      : "https://REPLACE-WITH-YOUR-BACKEND-HOST/api/ask";
+
+  var chatForm = document.getElementById("chat-form");
+
+  if (chatForm) {
+    var chatLog = document.getElementById("chat-log");
+    var chatInput = document.getElementById("chat-input");
+    var chatSend = document.getElementById("chat-send");
+    var suggestBox = document.getElementById("chat-suggest");
+    var history = [];
+    var busy = false;
+
+    function addMessage(who, cls) {
+      var wrap = document.createElement("div");
+      wrap.className = "msg " + cls;
+
+      var label = document.createElement("p");
+      label.className = "msg-who mono";
+      label.textContent = who;
+
+      var body = document.createElement("div");
+      body.className = "msg-body";
+
+      wrap.appendChild(label);
+      wrap.appendChild(body);
+      chatLog.appendChild(wrap);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return body;
+    }
+
+    // Answers arrive as plain text; build paragraphs with textContent so a
+    // reply can never inject markup into the page.
+    function render(body, text) {
+      body.textContent = "";
+      text.split(/\n\n+/).forEach(function (para) {
+        if (!para.trim()) return;
+        var p = document.createElement("p");
+        p.textContent = para.trim();
+        body.appendChild(p);
+      });
+    }
+
+    function addSources(body, sources) {
+      if (!sources || !sources.length) return;
+      var ul = document.createElement("ul");
+      ul.className = "msg-sources";
+      sources.forEach(function (s) {
+        var li = document.createElement("li");
+        li.textContent = s.title;
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
+
+    function setBusy(state) {
+      busy = state;
+      chatSend.disabled = state;
+      chatInput.disabled = state;
+    }
+
+    async function ask(question) {
+      if (busy) return;
+      setBusy(true);
+      if (suggestBox) suggestBox.hidden = true;
+
+      render(addMessage("You", "msg-user"), question);
+      var body = addMessage("Assistant", "msg-bot");
+      body.classList.add("streaming");
+
+      var answer = "";
+
+      try {
+        var res = await fetch(ASK_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: question, history: history.slice(-6) }),
+        });
+
+        if (!res.ok) {
+          var msg = "Something went wrong. Try again in a moment.";
+          try {
+            var errJson = await res.json();
+            if (errJson && errJson.error) msg = errJson.error;
+          } catch (e) { /* non-JSON error body — keep the generic message */ }
+          throw new Error(msg);
+        }
+
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = "";
+
+        while (true) {
+          var chunk = await reader.read();
+          if (chunk.done) break;
+          buffer += decoder.decode(chunk.value, { stream: true });
+
+          // SSE frames are separated by a blank line; the last piece may be a
+          // partial frame, so it stays in the buffer until its terminator lands.
+          var frames = buffer.split("\n\n");
+          buffer = frames.pop();
+
+          for (var i = 0; i < frames.length; i++) {
+            var line = frames[i].trim();
+            if (line.indexOf("data:") !== 0) continue;
+
+            var payload;
+            try {
+              payload = JSON.parse(line.slice(5).trim());
+            } catch (e) {
+              continue;
+            }
+
+            if (payload.error) throw new Error(payload.error);
+
+            if (payload.delta) {
+              answer += payload.delta;
+              render(body, answer);
+              chatLog.scrollTop = chatLog.scrollHeight;
+            }
+
+            if (payload.done) {
+              body.classList.remove("streaming");
+              addSources(body, payload.sources);
+            }
+          }
+        }
+
+        history.push({ role: "user", content: question });
+        history.push({ role: "assistant", content: answer });
+      } catch (err) {
+        body.parentElement.classList.add("msg-error");
+        render(
+          body,
+          err.message ||
+            "I couldn't reach the assistant. Omer is on amory30900@hotmail.com."
+        );
+      } finally {
+        body.classList.remove("streaming");
+        setBusy(false);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+    }
+
+    chatForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var q = chatInput.value.trim();
+      if (!q) return;
+      chatInput.value = "";
+      ask(q);
+    });
+
+    if (suggestBox) {
+      suggestBox.addEventListener("click", function (e) {
+        var btn = e.target.closest(".sugg");
+        if (btn) ask(btn.textContent.trim());
+      });
+    }
+  }
+
   /* ── Nav: active section ─────────────────────────── */
   var links = Array.prototype.slice.call(document.querySelectorAll(".nav-links a"));
   var sections = links

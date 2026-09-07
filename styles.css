@@ -299,6 +299,99 @@ a{ color:inherit; }
 }
 .sec-num{ font-size:12px; color:var(--muted); letter-spacing:.14em; }
 
+/* ── ASK / RAG ASSISTANT ──────────────────────────── */
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+
+.ask-intro{ margin-bottom:24px; max-width:70ch; }
+.ask-lede{ margin:0 0 12px; font-size:16px; color:var(--fg-dim); line-height:1.6; }
+.ask-how{
+  margin:0; font-size:11.5px; letter-spacing:.02em; color:var(--label);
+  line-height:1.7;
+}
+
+.chat{ padding:0; overflow:hidden; }
+
+.chat-log{
+  /* Tall enough that answers rarely clip, capped so the section doesn't
+     dominate the page. Scrolls internally rather than growing the document. */
+  min-height:200px; max-height:min(52vh, 420px); overflow-y:auto;
+  padding:24px 26px; display:grid; gap:20px; align-content:start;
+  scroll-behavior:smooth;
+}
+@media (prefers-reduced-motion: reduce){ .chat-log{ scroll-behavior:auto; } }
+
+.msg{ display:grid; gap:6px; }
+.msg-who{
+  margin:0; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+}
+.msg-bot .msg-who{ color:var(--label); }
+.msg-user .msg-who{ color:var(--muted); }
+.msg-body{ font-size:15.5px; line-height:1.62; color:var(--fg-dim); }
+.msg-body p{ margin:0 0 10px; }
+.msg-body p:last-child{ margin-bottom:0; }
+.msg-user .msg-body{ color:var(--fg); font-weight:500; }
+
+/* Caret while streaming, so a slow first token doesn't look like a hang. */
+.msg-body.streaming::after{
+  content:""; display:inline-block; width:7px; height:1.05em;
+  background:var(--label); margin-left:3px; vertical-align:text-bottom;
+  animation:caret 1s steps(2) infinite;
+}
+@keyframes caret{ 50%{ opacity:0; } }
+@media (prefers-reduced-motion: reduce){
+  .msg-body.streaming::after{ animation:none; }
+}
+
+.msg-sources{
+  margin:10px 0 0; padding:0; list-style:none;
+  display:flex; flex-wrap:wrap; gap:6px;
+}
+.msg-sources li{
+  font-family:var(--mono); font-size:10.5px; color:var(--muted);
+  border:1px solid var(--rule-soft); padding:3px 8px;
+}
+.msg-error .msg-body{ color:var(--label); }
+
+.chat-suggest{
+  display:flex; flex-wrap:wrap; gap:7px;
+  padding:0 26px 18px;
+}
+.sugg{
+  font-size:11.5px; color:var(--fg-dim); text-align:left;
+  background:transparent; border:1px solid var(--rule-soft);
+  border-radius:var(--radius); padding:7px 11px; cursor:pointer;
+  transition:background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+.sugg:hover{ background:var(--hover-bg); border-color:var(--rule); color:var(--fg); }
+.chat-suggest[hidden]{ display:none; }
+
+.chat-form{
+  display:flex; gap:0; border-top:1px solid var(--rule-soft);
+}
+.chat-input{
+  flex:1; min-width:0; min-height:56px; padding:0 20px;
+  background:transparent; color:var(--fg);
+  font-family:var(--sans); font-size:15px;
+  border:none; border-right:1px solid var(--rule-soft);
+}
+.chat-input::placeholder{ color:var(--muted); }
+.chat-input:focus{ outline:none; background:var(--hover-bg); }
+.chat-form:focus-within{ box-shadow:inset 0 0 0 2px var(--label); }
+.chat-send{
+  min-height:56px; border:none; border-radius:0; flex:none;
+  padding:0 24px; font-size:14px;
+}
+.chat-send[disabled]{ opacity:.5; cursor:not-allowed; }
+@media (max-width:560px){
+  .chat-log{ padding:20px 18px; }
+  .chat-suggest{ padding:0 18px 16px; }
+  .chat-input{ padding:0 16px; font-size:16px; } /* 16px: stops iOS zoom on focus */
+  .chat-send{ padding:0 18px; }
+}
+
 /* ── CONTENT BLOCKS (experience + projects) ───────── */
 .card{
   background:var(--surface);

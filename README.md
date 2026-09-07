@@ -3,12 +3,105 @@
 Static personal site. Three files, no build step, no dependencies.
 
 ```
-index.html   content + structure
-styles.css   design tokens at the top, then layout, then components
-script.js    theme toggle, Abu Dhabi clock, hero EEG trace, copy-email,
-             scroll reveals, nav state
-assets/      avatar.png (48x48, transparent), favicon.png, apple-touch-icon.png
+index.html      content + structure
+styles.css      design tokens at the top, then layout, then components
+script.js       theme toggle, Abu Dhabi clock, hero EEG trace, copy-email,
+                RAG chat client, scroll reveals, nav state
+assets/         avatar.png (48x48, transparent), favicon.png, apple-touch-icon.png
+
+rag/knowledge/  the assistant's source notes (markdown, one topic per "## ")
+rag/build_kb.py chunk + embed the notes -> backend/kb.json
+backend/        FastAPI service: retrieval + Claude, holds the API key
 ```
+
+The page itself is still a dependency-free static site. The assistant is a
+separate service the page calls — the site works with the backend offline, it
+just can't answer questions.
+
+## The RAG assistant
+
+Visitors can ask the site questions about Omer. The flow:
+
+```
+browser  --POST /api/ask-->  FastAPI
+                               |- embed the question   (bge-small, local, CPU)
+                               |- cosine over kb.json   (31 chunks, exact)
+                               |- top chunks -> Claude Opus 5
+                               '--SSE stream------------> browser
+```
+
+**The API key lives only in the backend.** The site is static, in a public
+repo, so anything shipped to the browser is public. That is the whole reason
+this is a service rather than a `fetch` from `script.js`.
+
+### Running it
+
+```bash
+cd backend
+python -m venv .venv && .venv/Scripts/activate      # Windows
+pip install -r requirements.txt
+cp .env.example .env                                 # then paste your key in
+python ../rag/build_kb.py                            # writes backend/kb.json
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+Then set `ASK_ENDPOINT` near the bottom of `script.js` to the deployed URL. It
+already points at `http://localhost:8000` when the page is served from
+localhost, so local development needs no edit.
+
+### Adding to the knowledge base
+
+Drop a markdown file in `rag/knowledge/`, one topic per `## ` heading, then
+re-run `python rag/build_kb.py` and restart the backend. Each `## ` section
+becomes one retrievable chunk, so write each as a self-contained answer to a
+question someone would actually ask — the heading is embedded along with the
+body, so it carries the topic.
+
+### Retrieval thresholds are measured, not guessed
+
+`config.MIN_SCORE` and `REL_MARGIN` exist because one global cutoff cannot do
+the job. bge-small has a compressed similarity range — measured on this corpus,
+real questions score **0.56–0.78** against their correct chunk while off-topic
+questions ("what is the capital of France?") still reach **0.45–0.46** against
+their best one.
+
+- `MIN_SCORE = 0.50` sits in that gap and answers "do we know anything about
+  this at all". Set it to 0.62 and *"what did he do at his internship?"* (0.56)
+  retrieves nothing — a question worth answering.
+- `REL_MARGIN = 0.12` then keeps only chunks close to the best hit. A fixed
+  cutoff can't: 0.62 is filler beneath a 0.75 top hit, but the only answer
+  beneath a 0.56 one.
+
+Re-measure both if the embedding model or the corpus changes materially.
+
+### The embedding model must match on both sides
+
+`rag/build_kb.py` and the live retriever both read `EMBED_MODEL` from
+`backend/config.py`. A query embedded by a different model than the documents
+lands in a different vector space and retrieval returns confident nonsense with
+no error anywhere — so `Retriever.__init__` refuses to start if `kb.json` was
+built with a different model than the one configured.
+
+### Guardrails
+
+- **Grounding** — the system prompt allows answers only from retrieved context,
+  and requires saying so plainly when the answer isn't there. Inventing a fact
+  about a real person's career is the failure mode that matters here.
+- **Off-topic** — if nothing clears `MIN_SCORE`, the backend returns a fixed
+  reply and never calls Claude. Cheaper, and it can't hallucinate.
+- **Prompt injection** — the visitor's question is treated as untrusted data.
+  Note that retrieval *will* still return chunks for an injection attempt; that
+  is expected, since retrieval is semantic. The defence is the system prompt,
+  not the retriever.
+- **Rate limits** — 6/min and 60/day per IP, in-process. Single instance only:
+  run more than one worker and each gets its own counters, so the effective
+  limit multiplies. Move to Redis before scaling out.
+- **Cost** — `max_tokens` 800 and `effort: low`, suited to short grounded
+  answers. Thinking is left on: lowering effort is the documented way to cut
+  cost on Opus 5, whereas disabling thinking has its own failure modes.
+- **Refusal fallback** — a policy decline retries on `claude-opus-4-8` inside
+  the same call so a visitor doesn't get a dead stream. Set
+  `USE_REFUSAL_FALLBACK=false` to drop it.
 
 ## The portrait
 

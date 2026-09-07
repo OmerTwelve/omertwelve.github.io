@@ -37,6 +37,7 @@
     <a class="mark" href="#top">Omer Ahmed</a>
 
     <nav class="nav-links" aria-label="Sections">
+      <a href="#ask">Ask</a>
       <a href="#work">Work</a>
       <a href="#projects">Projects</a>
       <a href="#skills">Skills</a>
@@ -105,6 +106,64 @@
     </div>
   </section>
 
+  <!-- ASK — RAG assistant -->
+  <section class="band" id="ask">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="sec-rule" aria-hidden="true"></div>
+        <div class="sec-line">
+          <h2 class="display-sm">Ask about me</h2>
+          <span class="sec-num mono">01</span>
+        </div>
+      </div>
+
+      <div class="ask-intro reveal">
+        <p class="ask-lede">
+          A retrieval-augmented assistant that answers questions about my work.
+          It only knows what is in my notes &mdash; if something isn't there, it says so
+          rather than inventing it.
+        </p>
+        <p class="ask-how mono">
+          Question embedded &rarr; nearest chunks retrieved by cosine similarity &rarr;
+          Claude answers from those chunks only
+        </p>
+      </div>
+
+      <div class="chat card reveal">
+        <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="Conversation">
+          <div class="msg msg-bot">
+            <p class="msg-who mono">Assistant</p>
+            <div class="msg-body">
+              <p>Ask me anything about Omer's experience, projects or skills.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-suggest" id="chat-suggest">
+          <button type="button" class="sugg mono">What did he do at his internship?</button>
+          <button type="button" class="sugg mono">Why did he pick Random Forest over the CNN?</button>
+          <button type="button" class="sugg mono">Has he led a team?</button>
+          <button type="button" class="sugg mono">How do I contact him?</button>
+        </div>
+
+        <form class="chat-form" id="chat-form" autocomplete="off">
+          <label class="sr-only" for="chat-input">Ask a question about Omer</label>
+          <input
+            class="chat-input"
+            id="chat-input"
+            type="text"
+            maxlength="500"
+            placeholder="Ask a question&hellip;"
+            required
+          />
+          <button class="btn btn-solid chat-send" id="chat-send" type="submit">
+            Ask <span class="arrow" aria-hidden="true">&rarr;</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
   <!-- EXPERIENCE -->
   <section class="band" id="work">
     <div class="wrap">
@@ -112,7 +171,7 @@
         <div class="sec-rule" aria-hidden="true"></div>
         <div class="sec-line">
           <h2 class="display-sm">Experience</h2>
-          <span class="sec-num mono">01</span>
+          <span class="sec-num mono">02</span>
         </div>
       </div>
 
@@ -142,7 +201,7 @@
         <div class="sec-rule" aria-hidden="true"></div>
         <div class="sec-line">
           <h2 class="display-sm">Projects &amp; Research</h2>
-          <span class="sec-num mono">02</span>
+          <span class="sec-num mono">03</span>
         </div>
       </div>
 
@@ -224,7 +283,7 @@
         <div class="sec-rule" aria-hidden="true"></div>
         <div class="sec-line">
           <h2 class="display-sm">Skills &amp; Education</h2>
-          <span class="sec-num mono">03</span>
+          <span class="sec-num mono">04</span>
         </div>
       </div>
 
@@ -271,7 +330,7 @@
         <div class="sec-rule" aria-hidden="true"></div>
         <div class="sec-line">
           <h2 class="display-sm">Let&rsquo;s Connect</h2>
-          <span class="sec-num mono">04</span>
+          <span class="sec-num mono">05</span>
         </div>
       </div>
 
