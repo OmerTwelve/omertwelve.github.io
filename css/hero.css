@@ -1,0 +1,115 @@
+/* ── HERO ─────────────────────────────────────────── */
+.hero{
+  position:relative; overflow:hidden;
+  padding:clamp(56px, 11vh, 116px) 0 clamp(48px, 8vh, 88px);
+  border-bottom:1px solid var(--rule);
+}
+.grid-bg{
+  position:absolute; inset:0; pointer-events:none;
+  background-image:
+    repeating-linear-gradient(to right,  var(--grid-line) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(to bottom, var(--grid-line) 0 1px, transparent 1px 88px);
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 40%, #000 35%, transparent 100%);
+  -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 40%, #000 35%, transparent 100%);
+}
+/* ── HERO PORTRAIT WATERMARK ──────────────────────
+   Ghosted behind the type, bleeding off the right edge. The source is a
+   transparent 48px sprite, so it has to be tinted rather than shown as-is:
+   near-black pixels would disappear on the dark ground. */
+.hero-portrait{
+  position:absolute; z-index:0; pointer-events:none;
+  /* Runs the full height of the hero, behind the stat row included. The stat
+     row is left transparent on purpose so the figure reads as one shape
+     rather than being sliced at the rule. */
+  right:-6%; bottom:-14%;
+  width:clamp(420px, 54vw, 720px); aspect-ratio:1 / 1;
+  /* Relative to *this stylesheet*, not the document — hence the ../ now that
+     the CSS lives in css/. */
+  background:url("../assets/avatar.png") no-repeat right bottom / contain;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+  /* grayscale, not brightness(0): a flat silhouette loses the hair, brows
+     and eyes that make it read as a portrait rather than a smudge. The
+     contrast bump keeps those features separated once opacity is this low. */
+  filter:grayscale(1) contrast(1.25);
+  opacity:.11;
+  mask-image:linear-gradient(to left, #000 42%, transparent 98%);
+  -webkit-mask-image:linear-gradient(to left, #000 42%, transparent 98%);
+}
+:root[data-theme="dark"] .hero-portrait{
+  filter:grayscale(1) contrast(1.25) invert(1);
+  opacity:.13;
+}
+@media (max-width:900px){
+  /* Behind body copy on narrow screens — pull it back so text stays clean. */
+  .hero-portrait{ width:clamp(300px, 70vw, 420px); right:-14%; opacity:.07; }
+  :root[data-theme="dark"] .hero-portrait{ opacity:.09; }
+}
+
+#wave{
+  position:absolute; inset:auto 0 0 0; width:100%; height:220px;
+  opacity:.6; pointer-events:none;
+  mask-image:linear-gradient(to top, #000 8%, transparent 92%);
+  -webkit-mask-image:linear-gradient(to top, #000 8%, transparent 92%);
+}
+.hero-in{ position:relative; z-index:1; }
+
+.display{ margin:0 0 30px; font-family:var(--serif); font-weight:700; }
+.d-sm, .d-lg{ display:block; letter-spacing:-.02em; }
+.d-sm{ font-size:clamp(30px, 5.4vw, 58px); line-height:1.06; }
+.d-lg{ font-size:clamp(42px, 9.2vw, 104px); line-height:.98; }
+
+.lede{
+  margin:0 0 34px; max-width:56ch;
+  font-size:clamp(16.5px, 1.9vw, 19px); line-height:1.62; color:var(--fg-dim);
+}
+
+.cta-row{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:clamp(44px, 7vh, 72px); }
+.btn{
+  display:inline-flex; align-items:center; gap:10px;
+  min-height:52px; padding:0 26px;
+  border:1px solid var(--rule); border-radius:var(--radius);
+  background:transparent; color:var(--fg);
+  font-family:var(--sans); font-size:15px; font-weight:600; letter-spacing:.01em;
+  text-decoration:none; cursor:pointer;
+  transition:background-color .18s ease, color .18s ease;
+}
+.btn:hover{ background:var(--hover-bg); }
+.btn-solid{ background:var(--ink); color:var(--paper); }
+.btn-solid:hover{ background:var(--ink); color:var(--paper); opacity:.86; }
+.btn .arrow{ transition:transform .18s ease; }
+.btn:hover .arrow{ transform:translateX(4px); }
+@media (prefers-reduced-motion: reduce){
+  .btn:hover .arrow{ transform:none; }
+}
+
+.stat-row{
+  list-style:none; margin:0; padding:0;
+  display:grid; grid-template-columns:repeat(3,1fr);
+  border-top:2px solid var(--rule);
+}
+.stat-row li{
+  padding:22px 24px 24px;
+  border-left:1px solid var(--rule-soft);
+  display:flex; flex-direction:column; gap:8px;
+}
+.stat-row li:first-child{ border-left:none; padding-left:0; }
+.stat-row b{
+  font-size:clamp(21px,2.9vw,30px); font-weight:500; letter-spacing:-.02em;
+}
+/* --fg-dim, not --muted: these captions sit over the portrait watermark, and
+   muted grey measures ~3.7:1 against the figure's darkest pixels. The dimmer
+   ink still clears 4.5:1 over even the blackest part of it, so the watermark
+   can stay behind the text instead of being masked out by an opaque row. */
+.stat-row span{ font-size:13px; color:var(--fg-dim); line-height:1.5; max-width:30ch; }
+@media (max-width:760px){
+  .stat-row{ grid-template-columns:1fr; }
+  .stat-row li{ border-left:none; border-top:1px solid var(--rule-soft); padding:18px 0; }
+  .stat-row li:first-child{ border-top:none; }
+}
+
+/* Body copy holds at 16px on small screens; below that, long-form
+   reading degrades and iOS starts auto-zooming on focus. */
+@media (max-width:600px){
+  .stat-row span{ font-size:14px; }
+}

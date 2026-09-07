@@ -1,0 +1,71 @@
+/* Design tokens. Light is the default (bare :root); dark is an opt-in
+   override. Nothing outside this file hardcodes a colour. */
+
+/* ============================================================
+   Omer Ahmed — portfolio
+   Editorial system: high-contrast serif display, grotesque body,
+   mono metadata. Hard hairline rules, square corners, paper ground.
+
+   Theming: light is the default (bare :root). Dark is an opt-in
+   override on :root[data-theme="dark"], set by the toggle and
+   persisted in localStorage. Every colour below is a token —
+   nothing hardcodes a light or dark value past this block.
+   ============================================================ */
+
+:root{
+  --paper:      #f7f6f2;   /* page ground */
+  --surface:    #fffefb;   /* raised cards */
+  --ink:        #14140f;   /* rules + display type */
+  --fg:         #14140f;
+  --fg-dim:     #45453d;
+  --muted:      #6a6a60;
+
+  --rule:        #14140f;              /* the hard editorial hairline */
+  --rule-soft:   rgba(20,20,15,.16);
+  --hover-bg:    rgba(20,20,15,.045);
+  --grid-line:   rgba(20,20,15,.055);
+
+  /* Two accents, same job split as the reference: a bright chip fill
+     for emphasis, a warm micro-label colour for eyebrows. */
+  --chip:        #d8f24d;
+  --on-chip:     #14140f;
+  --label:       #a83a12;
+
+  --wave-1: rgba(20,20,15,.34);
+  --wave-2: rgba(20,20,15,.16);
+  --wave-3: rgba(20,20,15,.09);
+
+  color-scheme: light;
+
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --sans:  "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --wrap: 1180px;
+  --pad: clamp(20px, 5vw, 56px);
+  --radius: 0;                 /* square corners are part of the language */
+}
+
+:root[data-theme="dark"]{
+  --paper:      #0e0e0c;
+  --surface:    #161613;
+  --ink:        #f2f1ea;
+  --fg:         #f2f1ea;
+  --fg-dim:     #b4b3a9;
+  --muted:      #8d8c82;
+
+  --rule:        #f2f1ea;
+  --rule-soft:   rgba(242,241,234,.20);
+  --hover-bg:    rgba(242,241,234,.07);
+  --grid-line:   rgba(242,241,234,.05);
+
+  --chip:        #d8f24d;
+  --on-chip:     #14140f;
+  --label:       #ff8a5c;
+
+  --wave-1: rgba(216,242,77,.42);
+  --wave-2: rgba(242,241,234,.18);
+  --wave-3: rgba(242,241,234,.10);
+
+  color-scheme: dark;
+}

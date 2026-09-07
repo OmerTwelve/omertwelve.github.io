@@ -4,16 +4,58 @@ Static personal site — no build step, no framework. The page has no runtime
 dependencies; the assistant is a separate FastAPI service.
 
 ```
-index.html      content + structure
-styles.css      design tokens at the top, then layout, then components
-script.js       theme toggle, Abu Dhabi clock, hero EEG trace, copy-email,
-                omer-cli terminal + RAG client, scroll reveals, nav state
-assets/         avatar.png (48x48, transparent), favicon.png, apple-touch-icon.png
+index.html          content + structure
 
-rag/knowledge/  the assistant's source notes (markdown, one topic per "## ")
-rag/build_kb.py chunk + embed the notes -> backend/kb.json
-backend/        FastAPI service: retrieval + Claude, holds the API key
+css/tokens.css      design tokens, both themes — nothing else hardcodes a colour
+css/base.css        reset, page defaults, shared utilities
+css/nav.css         css/hero.css      css/sections.css
+css/contact.css     css/terminal.css  css/motion.css
+
+js/main.js          entry: imports each feature and calls its init
+js/config.js        backend URL, token pricing, reduced-motion flag
+js/theme.js         theme toggle; emits `themechange`
+js/clock.js         js/copy-email.js  js/hero-wave.js
+js/reveal.js        js/nav.js
+js/terminal/        index.js (shell) · commands.js (text) · client.js (SSE)
+
+assets/             avatar.png (48x48, transparent), favicon.png, apple-touch-icon.png
+
+rag/knowledge/      the assistant's source notes (markdown, one topic per "## ")
+rag/build_kb.py     chunk + embed the notes -> backend/kb.json
+backend/            FastAPI service: retrieval + Claude, holds the API key
 ```
+
+### How the frontend is organised
+
+Native ES modules and one stylesheet per component — **no bundler, no build
+step.** Each JS module exports a single `initX()` that no-ops when its markup is
+absent, so `main.js` is just the wiring order and deleting a feature is one
+import and one call.
+
+Two rules keep the pieces from re-tangling:
+
+- **Modules don't call each other's internals.** The hero canvas needs to
+  re-read its colours when the theme flips, so `theme.js` emits a
+  `themechange` event on `document` and `hero-wave.js` listens. Neither knows
+  the other exists. (The single-file version used a mutable `onThemeChange`
+  variable declared early purely to satisfy hoisting — the event removes both
+  the coupling and the ordering constraint.)
+- **Terminal concerns are separated**: `commands.js` is text and knows no DOM,
+  `client.js` is transport and knows no DOM, `index.js` owns the DOM. `/help`
+  is generated from the command table, so it cannot drift out of date.
+
+Stylesheets are separate `<link>` tags in cascade order, not `@import` —
+`@import` chains serialise the requests and delay first paint. Media queries
+live beside the component they modify rather than in one responsive file.
+
+Two gotchas this structure introduces, both already handled:
+
+- **`url()` in CSS resolves against the stylesheet, not the document.** Moving
+  the CSS into `css/` broke the hero portrait until it became
+  `../assets/avatar.png`.
+- **ES modules need `http://`.** Opening `index.html` from the filesystem no
+  longer works — module loading fails CORS on `file://`. Use the local server
+  below; GitHub Pages serves over HTTP so production is unaffected.
 
 The page itself is still a dependency-free static site. The assistant is a
 separate service the page calls — the site works with the backend offline, it
@@ -62,9 +104,9 @@ python ../rag/build_kb.py                            # writes backend/kb.json
 python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Then set `ASK_ENDPOINT` in the omer-cli block of `script.js` to the deployed
-URL. It already points at `http://localhost:8000` when the page is served from
-localhost, so local development needs no edit.
+Then set `API_BASE` in `js/config.js` to the deployed URL. It already points at
+`http://localhost:8000` when the page is served from localhost, so local
+development needs no edit.
 
 ### Adding to the knowledge base
 
@@ -180,8 +222,8 @@ solid ground would fix it, at the cost of the transparency.
 python -m http.server 4321
 ```
 
-Then open http://localhost:4321. (Opening `index.html` directly via `file://`
-works too — nothing here needs a server.)
+Then open http://localhost:4321. A server is required — the page uses native
+ES modules, which browsers refuse to load over `file://`.
 
 ## Deploy to GitHub Pages
 

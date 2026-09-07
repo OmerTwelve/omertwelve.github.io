@@ -1,0 +1,53 @@
+/* Reset, page defaults, and the utilities every component uses. */
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html{ scroll-behavior:smooth; }
+@media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--fg);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  transition:background-color .25s ease, color .25s ease;
+}
+
+a{ color:inherit; }
+.mono{ font-family:var(--mono); }
+.dim{ color:var(--muted); }
+
+.skip{
+  position:absolute; left:-9999px; top:0; z-index:99;
+  background:var(--ink); color:var(--paper); padding:12px 18px; font-weight:600;
+}
+.skip:focus{ left:8px; top:8px; }
+
+:focus-visible{ outline:2px solid var(--label); outline-offset:2px; }
+
+.wrap{ width:100%; max-width:var(--wrap); margin:0 auto; padding-inline:var(--pad); }
+
+/* Screen-reader-ish status line: present for AT, quiet visually. */
+.sr-live{
+  margin:8px 0 0; min-height:1.2em;
+  font-size:12px; color:var(--label); letter-spacing:.04em;
+}
+
+/* ── SHARED: micro-label + chip ───────────────────── */
+.label{
+  margin:0 0 8px;
+  font-size:11px; font-weight:500; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--label);
+}
+.chip{
+  display:inline-block; margin:0;
+  background:var(--chip); color:var(--on-chip);
+  font-family:var(--mono); font-size:10.5px; font-weight:500;
+  letter-spacing:.12em; text-transform:uppercase;
+  padding:5px 9px;
+}
+.chip-sm{ font-size:9.5px; padding:3px 7px; margin-left:8px; vertical-align:middle; }

@@ -23,7 +23,17 @@
     } catch (e) { /* private mode — fall through to light */ }
   })();
 </script>
-<link rel="stylesheet" href="styles.css" />
+<!-- Split by concern and loaded in cascade order: tokens first, then base,
+     then one file per component. Separate <link> tags rather than @import —
+     @import chains serialise the requests and delay first paint. -->
+<link rel="stylesheet" href="css/tokens.css" />
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/nav.css" />
+<link rel="stylesheet" href="css/hero.css" />
+<link rel="stylesheet" href="css/sections.css" />
+<link rel="stylesheet" href="css/contact.css" />
+<link rel="stylesheet" href="css/terminal.css" />
+<link rel="stylesheet" href="css/motion.css" />
 <!-- Favicon: whole figure, transparent background. -->
 <link rel="icon" type="image/png" sizes="60x60" href="assets/favicon.png" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
@@ -397,6 +407,6 @@
   </div>
 </div>
 
-<script src="script.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
