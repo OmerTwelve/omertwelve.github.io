@@ -224,10 +224,19 @@ async def ask(req: AskRequest, request: Request):
             if final.stop_reason == "refusal":
                 yield sse({"delta": " [This question was declined.]"})
 
+            # Real token counts, so the terminal's meter reports what was
+            # actually spent rather than a decorative number.
+            usage = getattr(final, "usage", None)
             yield sse(
                 {
                     "done": True,
                     "sources": [{"title": h.title, "score": round(h.score, 3)} for h in hits],
+                    "usage": {
+                        "input_tokens": getattr(usage, "input_tokens", 0) or 0,
+                        "output_tokens": getattr(usage, "output_tokens", 0) or 0,
+                    }
+                    if usage
+                    else None,
                 }
             )
 

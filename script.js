@@ -209,59 +209,197 @@
     sweep();
   }
 
-  /* ── RAG assistant ────────────────────────────────
-     Posts a question to the FastAPI backend and streams the answer back over
-     SSE. The backend holds the Anthropic key and does retrieval; nothing
-     secret is reachable from here. */
+  /* ── omer-cli ─────────────────────────────────────
+     A terminal for the RAG assistant. Slash commands answer locally from
+     constants — instant, and no API spend on "/help". Anything else is a
+     question: it goes to the FastAPI backend, which does retrieval and
+     streams Claude's answer back over SSE. The key lives there, not here. */
   var ASK_ENDPOINT =
     location.hostname === "localhost" || location.hostname === "127.0.0.1"
       ? "http://localhost:8000/api/ask"
       : "https://REPLACE-WITH-YOUR-BACKEND-HOST/api/ask";
 
-  var chatForm = document.getElementById("chat-form");
+  var term = document.getElementById("terminal");
 
-  if (chatForm) {
-    var chatLog = document.getElementById("chat-log");
-    var chatInput = document.getElementById("chat-input");
-    var chatSend = document.getElementById("chat-send");
-    var suggestBox = document.getElementById("chat-suggest");
-    var history = [];
-    var busy = false;
+  if (term) {
+    var termOpenBtn = document.getElementById("term-open");
+    var termCloseBtn = document.getElementById("term-close");
+    var termScroll = document.getElementById("term-scroll");
+    var termOut = document.getElementById("term-out");
+    var termForm = document.getElementById("term-form");
+    var termInput = document.getElementById("term-input");
+    var tokensEl = document.getElementById("term-tokens");
+    var costEl = document.getElementById("term-cost");
+    var chunksEl = document.getElementById("term-chunks");
 
-    function addMessage(who, cls) {
-      var wrap = document.createElement("div");
-      wrap.className = "msg " + cls;
+    var convo = [];        // conversation sent to the model
+    var cmdHistory = [];   // what the user typed, for arrow-key recall
+    var cmdIndex = -1;
+    var termBusy = false;
+    var totalTokens = 0;
+    var pushedState = false;   // did *we* push the #terminal history entry?
 
-      var label = document.createElement("p");
-      label.className = "msg-who mono";
-      label.textContent = who;
+    // Opus 5 list price, per million tokens.
+    var PRICE_IN = 5.0, PRICE_OUT = 25.0;
+
+    var COMMANDS = {
+      "/help": function () {
+        return (
+          "Commands\n" +
+          "  /whoami      who Omer is, in one paragraph\n" +
+          "  /projects    the things he has built\n" +
+          "  /skills      languages, frameworks, tools\n" +
+          "  /contact     how to reach him\n" +
+          "  /clear       clear the screen\n" +
+          "  /exit        close the terminal\n\n" +
+          "Anything that isn't a command is treated as a question. It is " +
+          "embedded, matched against Omer's notes by cosine similarity, and " +
+          "answered by Claude from the retrieved chunks only."
+        );
+      },
+      "/whoami": function () {
+        return (
+          "Omer Ahmed — AI Engineering graduate, Abu Dhabi, UAE.\n\n" +
+          "BSc Artificial Intelligence Engineering (Honours), Cyprus " +
+          "International University. Works on real-time signal pipelines, " +
+          "models that survive production, and the backends that keep them " +
+          "running. Open to AI/ML engineering roles."
+        );
+      },
+      "/projects": function () {
+        return (
+          "NeuroSense — Real-Time EEG Stress Classification   [flagship]\n" +
+          "  8-channel BCI at 250 Hz. Random Forest, 80.5% LOSO accuracy\n" +
+          "  across 36 subjects. Python, FastAPI, React, scikit-learn.\n\n" +
+          "AI Therapist — Mental Health Classification\n" +
+          "  DistilBERT on 42K statements, 82.7% val accuracy, 0.813 macro\n" +
+          "  F1. FAISS retrieval. Led a team of 4.\n\n" +
+          "Car Rental System — Relational Database\n" +
+          "  Normalized schema, role-based access control, Tkinter GUI.\n\n" +
+          "Ask about any of them for detail."
+        );
+      },
+      "/skills": function () {
+        return (
+          "Programming   Python, SQL, C++, C, C#\n" +
+          "Frameworks    PyTorch, TensorFlow, scikit-learn, Pandas, NumPy,\n" +
+          "              Matplotlib, React, FAISS\n" +
+          "Tools         FastAPI, Docker, Git, REST APIs, Streamlit,\n" +
+          "              Supabase, Arduino\n" +
+          "Languages     Arabic (native), English (fluent)"
+        );
+      },
+      "/contact": function () {
+        return (
+          "email      amory30900@hotmail.com\n" +
+          "phone      +971 56 382 0738\n" +
+          "github     github.com/OmerTwelve\n" +
+          "linkedin   linkedin.com/in/omertwelve\n" +
+          "location   Abu Dhabi, UAE (UTC+4)"
+        );
+      }
+    };
+
+    var COMMAND_NAMES = Object.keys(COMMANDS).concat(["/clear", "/exit"]).sort();
+
+    /* The nav wraps to two rows on narrow screens, so its height is measured
+       rather than assumed — otherwise the terminal either clips under it or
+       leaves a gap. */
+    var nav = document.querySelector(".nav");
+    function syncNavHeight() {
+      root.style.setProperty("--nav-h", nav.getBoundingClientRect().height + "px");
+    }
+    syncNavHeight();
+    window.addEventListener("resize", syncNavHeight);
+
+    function openTerm(pushHash) {
+      if (!term.hidden) return;
+      syncNavHeight();
+      term.hidden = false;
+      document.body.classList.add("term-open");
+      termOpenBtn.classList.add("open");
+      termOpenBtn.setAttribute("aria-expanded", "true");
+      if (pushHash !== false && location.hash !== "#terminal") {
+        window.history.pushState(null, "", "#terminal");
+        pushedState = true;
+      }
+      termInput.focus();
+      loadStatus();
+    }
+
+    // fromPop: the browser already moved us, so don't move it again.
+    function closeTerm(fromPop) {
+      if (term.hidden) return;
+      term.hidden = true;
+      document.body.classList.remove("term-open");
+      termOpenBtn.classList.remove("open");
+      termOpenBtn.setAttribute("aria-expanded", "false");
+      if (fromPop) {
+        pushedState = false;
+      } else if (pushedState) {
+        pushedState = false;
+        window.history.back();     // we pushed the entry, so undo it
+      } else if (location.hash === "#terminal") {
+        // Opened by deep link, so there is no entry of ours to go back to —
+        // history.back() here would eject the visitor from the site entirely.
+        window.history.replaceState(null, "", location.pathname + location.search);
+      }
+      termOpenBtn.focus();
+    }
+
+    // One fetch on first open: proves the backend is reachable and fills in
+    // the corpus size, so the boot banner isn't quietly fictional.
+    var statusLoaded = false;
+    function loadStatus() {
+      if (statusLoaded) return;
+      statusLoaded = true;
+      fetch(ASK_ENDPOINT.replace(/\/ask$/, "/health"))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          chunksEl.textContent = d && d.chunks != null ? d.chunks : "—";
+        })
+        .catch(function () { chunksEl.textContent = "offline"; });
+    }
+
+    function scrollDown() {
+      termScroll.scrollTop = termScroll.scrollHeight;
+    }
+
+    function printCommand(text) {
+      var entry = document.createElement("div");
+      entry.className = "t-entry";
+
+      var cmd = document.createElement("p");
+      cmd.className = "t-cmd";
+      var caret = document.createElement("span");
+      caret.className = "term-caret";
+      caret.textContent = "›";
+      var what = document.createElement("span");
+      what.textContent = text;
+      cmd.appendChild(caret);
+      cmd.appendChild(what);
 
       var body = document.createElement("div");
-      body.className = "msg-body";
+      body.className = "t-body";
 
-      wrap.appendChild(label);
-      wrap.appendChild(body);
-      chatLog.appendChild(wrap);
-      chatLog.scrollTop = chatLog.scrollHeight;
+      entry.appendChild(cmd);
+      entry.appendChild(body);
+      termOut.appendChild(entry);
+      scrollDown();
       return body;
     }
 
-    // Answers arrive as plain text; build paragraphs with textContent so a
-    // reply can never inject markup into the page.
-    function render(body, text) {
-      body.textContent = "";
-      text.split(/\n\n+/).forEach(function (para) {
-        if (!para.trim()) return;
-        var p = document.createElement("p");
-        p.textContent = para.trim();
-        body.appendChild(p);
-      });
+    function setBusy(state) {
+      termBusy = state;
+      termInput.disabled = state;
+      termForm.classList.toggle("busy", state);
+      if (!state) termInput.focus();
     }
 
     function addSources(body, sources) {
       if (!sources || !sources.length) return;
       var ul = document.createElement("ul");
-      ul.className = "msg-sources";
+      ul.className = "t-sources";
       sources.forEach(function (s) {
         var li = document.createElement("li");
         li.textContent = s.title;
@@ -270,36 +408,36 @@
       body.appendChild(ul);
     }
 
-    function setBusy(state) {
-      busy = state;
-      chatSend.disabled = state;
-      chatInput.disabled = state;
+    function updateMeter(usage) {
+      if (!usage) return;
+      var i = usage.input_tokens || 0, o = usage.output_tokens || 0;
+      totalTokens += i + o;
+      tokensEl.textContent =
+        totalTokens >= 1000 ? (totalTokens / 1000).toFixed(1) + "k" : totalTokens;
+      var cost = parseFloat(costEl.textContent) || 0;
+      cost += (i / 1e6) * PRICE_IN + (o / 1e6) * PRICE_OUT;
+      costEl.textContent = cost.toFixed(4);
     }
 
-    async function ask(question) {
-      if (busy) return;
-      setBusy(true);
-      if (suggestBox) suggestBox.hidden = true;
-
-      render(addMessage("You", "msg-user"), question);
-      var body = addMessage("Assistant", "msg-bot");
+    async function askBackend(question) {
+      var body = printCommand(question);
       body.classList.add("streaming");
+      setBusy(true);
 
       var answer = "";
-
       try {
         var res = await fetch(ASK_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: question, history: history.slice(-6) }),
+          body: JSON.stringify({ question: question, history: convo.slice(-6) })
         });
 
         if (!res.ok) {
-          var msg = "Something went wrong. Try again in a moment.";
+          var msg = "Request failed (" + res.status + ").";
           try {
-            var errJson = await res.json();
-            if (errJson && errJson.error) msg = errJson.error;
-          } catch (e) { /* non-JSON error body — keep the generic message */ }
+            var j = await res.json();
+            if (j && j.error) msg = j.error;
+          } catch (e) { /* non-JSON body — keep the status message */ }
           throw new Error(msg);
         }
 
@@ -312,8 +450,8 @@
           if (chunk.done) break;
           buffer += decoder.decode(chunk.value, { stream: true });
 
-          // SSE frames are separated by a blank line; the last piece may be a
-          // partial frame, so it stays in the buffer until its terminator lands.
+          // SSE frames end with a blank line; a trailing partial frame stays
+          // in the buffer until its terminator arrives.
           var frames = buffer.split("\n\n");
           buffer = frames.pop();
 
@@ -322,57 +460,136 @@
             if (line.indexOf("data:") !== 0) continue;
 
             var payload;
-            try {
-              payload = JSON.parse(line.slice(5).trim());
-            } catch (e) {
-              continue;
-            }
+            try { payload = JSON.parse(line.slice(5).trim()); }
+            catch (e) { continue; }
 
             if (payload.error) throw new Error(payload.error);
 
             if (payload.delta) {
               answer += payload.delta;
-              render(body, answer);
-              chatLog.scrollTop = chatLog.scrollHeight;
+              body.textContent = answer;   // textContent: a reply can't inject markup
+              scrollDown();
             }
 
             if (payload.done) {
               body.classList.remove("streaming");
               addSources(body, payload.sources);
+              updateMeter(payload.usage);
             }
           }
         }
 
-        history.push({ role: "user", content: question });
-        history.push({ role: "assistant", content: answer });
+        convo.push({ role: "user", content: question });
+        convo.push({ role: "assistant", content: answer });
       } catch (err) {
-        body.parentElement.classList.add("msg-error");
-        render(
-          body,
-          err.message ||
-            "I couldn't reach the assistant. Omer is on amory30900@hotmail.com."
-        );
+        body.classList.add("err");
+        body.textContent =
+          (err && err.message) ||
+          "Could not reach the assistant. Omer is on amory30900@hotmail.com.";
       } finally {
         body.classList.remove("streaming");
         setBusy(false);
-        chatLog.scrollTop = chatLog.scrollHeight;
+        scrollDown();
       }
     }
 
-    chatForm.addEventListener("submit", function (e) {
+    function run(raw) {
+      var input = raw.trim();
+      if (!input) return;
+
+      cmdHistory.push(input);
+      cmdIndex = cmdHistory.length;
+
+      if (input.charAt(0) === "/") {
+        var name = input.split(/\s+/)[0].toLowerCase();
+
+        if (name === "/clear") {
+          termOut.textContent = "";
+          return;
+        }
+        if (name === "/exit") {
+          closeTerm();
+          return;
+        }
+        if (COMMANDS[name]) {
+          printCommand(input).textContent = COMMANDS[name]();
+          scrollDown();
+          return;
+        }
+
+        var body = printCommand(input);
+        body.classList.add("err");
+        body.textContent =
+          "Unknown command: " + name + "\nType /help for the list.";
+        scrollDown();
+        return;
+      }
+
+      askBackend(input);
+    }
+
+    termForm.addEventListener("submit", function (e) {
       e.preventDefault();
-      var q = chatInput.value.trim();
-      if (!q) return;
-      chatInput.value = "";
-      ask(q);
+      if (termBusy) return;
+      var value = termInput.value;
+      termInput.value = "";
+      run(value);
     });
 
-    if (suggestBox) {
-      suggestBox.addEventListener("click", function (e) {
-        var btn = e.target.closest(".sugg");
-        if (btn) ask(btn.textContent.trim());
-      });
-    }
+    termInput.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        if (!cmdHistory.length) return;
+        e.preventDefault();
+        cmdIndex += e.key === "ArrowUp" ? -1 : 1;
+        cmdIndex = Math.max(0, Math.min(cmdIndex, cmdHistory.length));
+        termInput.value = cmdHistory[cmdIndex] || "";
+        // Put the caret at the end, not wherever it happened to be.
+        var end = termInput.value.length;
+        requestAnimationFrame(function () { termInput.setSelectionRange(end, end); });
+        return;
+      }
+
+      if (e.key === "Tab") {
+        var v = termInput.value.trim();
+        if (v.charAt(0) !== "/") return;
+        var matches = COMMAND_NAMES.filter(function (c) { return c.indexOf(v) === 0; });
+        if (!matches.length) return;
+        e.preventDefault();
+        if (matches.length === 1) {
+          termInput.value = matches[0] + " ";
+        } else {
+          printCommand(v).textContent = matches.join("  ");
+          scrollDown();
+        }
+      }
+    });
+
+    termOpenBtn.setAttribute("aria-expanded", "false");
+    termOpenBtn.addEventListener("click", function () {
+      term.hidden ? openTerm() : closeTerm();
+    });
+    termCloseBtn.addEventListener("click", function () { closeTerm(); });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !term.hidden) closeTerm();
+    });
+
+    // Clicking the empty area focuses the prompt, the way a terminal does —
+    // but not when the user is selecting text to copy.
+    termScroll.addEventListener("click", function (e) {
+      if (e.target.closest("a, button")) return;
+      if (String(window.getSelection())) return;
+      termInput.focus();
+    });
+
+    // Deep link: /#terminal opens it directly, so it can be shared. popstate
+    // (not hashchange) so the Back button closes the terminal rather than
+    // navigating away from the site.
+    if (location.hash === "#terminal") openTerm(false);
+    window.addEventListener("popstate", function () {
+      if (location.hash === "#terminal") openTerm(false);
+      else closeTerm(true);
+    });
   }
 
   /* ── Nav: active section ─────────────────────────── */

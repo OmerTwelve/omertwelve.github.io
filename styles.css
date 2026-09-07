@@ -299,98 +299,131 @@ a{ color:inherit; }
 }
 .sec-num{ font-size:12px; color:var(--muted); letter-spacing:.14em; }
 
-/* ── ASK / RAG ASSISTANT ──────────────────────────── */
+/* ── omer-cli TERMINAL ────────────────────────────────
+   A full-screen surface that sits *below* the sticky nav rather than over it,
+   so the site's chrome never disappears. --nav-h is measured in JS because the
+   nav wraps to two rows on narrow screens; a hardcoded height would either
+   clip the terminal or leave a gap. */
 .sr-only{
   position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
 }
 
-.ask-intro{ margin-bottom:24px; max-width:70ch; }
-.ask-lede{ margin:0 0 12px; font-size:16px; color:var(--fg-dim); line-height:1.6; }
-.ask-how{
-  margin:0; font-size:11.5px; letter-spacing:.02em; color:var(--label);
-  line-height:1.7;
+.util-btn-cli svg{ width:19px; height:19px; }
+.util-btn-cli.open{ background:var(--ink); color:var(--paper); }
+
+.term{
+  position:fixed; z-index:40;
+  top:var(--nav-h, 64px); left:0; right:0; bottom:0;
+  display:flex; flex-direction:column;
+  background:var(--paper);
+  font-family:var(--mono);
+  /* Same faint grid as the hero, so the terminal reads as part of the site
+     rather than a bolted-on widget. */
+  background-image:
+    repeating-linear-gradient(to right,  var(--grid-line) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(to bottom, var(--grid-line) 0 1px, transparent 1px 88px);
+}
+.term[hidden]{ display:none; }
+
+.term-bar{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:9px clamp(14px, 3vw, 26px);
+  font-size:12px; line-height:1.5; flex:none;
+  background:var(--paper);
+}
+.term-top{ border-bottom:1px solid var(--rule-soft); }
+.term-bottom{ border-top:1px solid var(--rule-soft); }
+.term-id b{ color:var(--label); font-weight:500; }
+.term-top-right{ display:flex; align-items:center; gap:14px; white-space:nowrap; }
+.term-exit{
+  background:transparent; border:none; padding:4px 2px; cursor:pointer;
+  font-family:var(--mono); font-size:12px; font-weight:500; color:var(--label);
+}
+.term-exit:hover{ text-decoration:underline; }
+.term-keys{ display:flex; gap:16px; flex-wrap:wrap; color:var(--muted); }
+.term-keys b{ color:var(--fg-dim); font-weight:500; }
+.term-hide-sm{ display:inline; }
+@media (max-width:700px){
+  .term-hide-sm{ display:none; }
+  .term-keys{ gap:12px; }
+  .term-bar{ font-size:11px; }
 }
 
-.chat{ padding:0; overflow:hidden; }
-
-.chat-log{
-  /* Tall enough that answers rarely clip, capped so the section doesn't
-     dominate the page. Scrolls internally rather than growing the document. */
-  min-height:200px; max-height:min(52vh, 420px); overflow-y:auto;
-  padding:24px 26px; display:grid; gap:20px; align-content:start;
-  scroll-behavior:smooth;
+.term-scroll{
+  flex:1; min-height:0; overflow-y:auto;
+  padding:clamp(18px, 4vh, 40px) clamp(14px, 3vw, 26px) 32px;
 }
-@media (prefers-reduced-motion: reduce){ .chat-log{ scroll-behavior:auto; } }
 
-.msg{ display:grid; gap:6px; }
-.msg-who{
-  margin:0; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+.term-logo{
+  margin:0 0 22px; padding:0;
+  color:var(--label);
+  font-size:clamp(6px, 1.55vw, 12px); line-height:1.05;
+  font-weight:500; white-space:pre; overflow-x:auto;
+  /* Chunky glyph shadow, echoing the blocky letterforms themselves. */
+  text-shadow:2px 2px 0 var(--rule-soft);
 }
-.msg-bot .msg-who{ color:var(--label); }
-.msg-user .msg-who{ color:var(--muted); }
-.msg-body{ font-size:15.5px; line-height:1.62; color:var(--fg-dim); }
-.msg-body p{ margin:0 0 10px; }
-.msg-body p:last-child{ margin-bottom:0; }
-.msg-user .msg-body{ color:var(--fg); font-weight:500; }
 
-/* Caret while streaming, so a slow first token doesn't look like a hang. */
-.msg-body.streaming::after{
-  content:""; display:inline-block; width:7px; height:1.05em;
-  background:var(--label); margin-left:3px; vertical-align:text-bottom;
-  animation:caret 1s steps(2) infinite;
+.term-boot{ margin-bottom:26px; font-size:13px; line-height:1.7; }
+.term-boot p{ margin:0; }
+.term-boot b{ font-weight:500; }
+.term-boot-hint{ margin-top:10px !important; color:var(--fg-dim); }
+.term-boot-hint b{ color:var(--label); }
+
+/* ── transcript ───────────────────────────────────── */
+.t-entry{ margin-bottom:22px; }
+.t-cmd{
+  display:flex; gap:11px; align-items:baseline;
+  font-size:14px; font-weight:500; color:var(--fg); margin-bottom:12px;
+  word-break:break-word;
 }
-@keyframes caret{ 50%{ opacity:0; } }
+.t-cmd .term-caret{ color:var(--label); flex:none; }
+.t-body{
+  font-size:13.5px; line-height:1.75; color:var(--fg-dim);
+  white-space:pre-wrap; word-break:break-word;
+}
+.t-body.err{ color:var(--label); }
+.t-body b{ color:var(--fg); font-weight:500; }
+.t-body a{ color:var(--label); }
+
+/* Block caret while streaming: a slow first token otherwise looks like a hang. */
+.t-body.streaming::after{
+  content:"█"; color:var(--label); margin-left:1px;
+  animation:t-blink 1s steps(2) infinite;
+}
+@keyframes t-blink{ 50%{ opacity:0; } }
 @media (prefers-reduced-motion: reduce){
-  .msg-body.streaming::after{ animation:none; }
+  .t-body.streaming::after{ animation:none; }
 }
 
-.msg-sources{
-  margin:10px 0 0; padding:0; list-style:none;
+.t-sources{
+  margin:12px 0 0; padding:0; list-style:none;
   display:flex; flex-wrap:wrap; gap:6px;
 }
-.msg-sources li{
-  font-family:var(--mono); font-size:10.5px; color:var(--muted);
+.t-sources li{
+  font-size:10.5px; color:var(--muted);
   border:1px solid var(--rule-soft); padding:3px 8px;
 }
-.msg-error .msg-body{ color:var(--label); }
 
-.chat-suggest{
-  display:flex; flex-wrap:wrap; gap:7px;
-  padding:0 26px 18px;
+/* ── prompt ───────────────────────────────────────── */
+.term-prompt{ display:flex; gap:11px; align-items:center; }
+.term-caret{ color:var(--label); font-size:15px; font-weight:500; flex:none; }
+.term-input{
+  flex:1; min-width:0;
+  background:transparent; border:none; padding:4px 0;
+  color:var(--fg); font-size:14px; font-family:var(--mono);
+  caret-color:var(--label);
 }
-.sugg{
-  font-size:11.5px; color:var(--fg-dim); text-align:left;
-  background:transparent; border:1px solid var(--rule-soft);
-  border-radius:var(--radius); padding:7px 11px; cursor:pointer;
-  transition:background-color .18s ease, border-color .18s ease, color .18s ease;
-}
-.sugg:hover{ background:var(--hover-bg); border-color:var(--rule); color:var(--fg); }
-.chat-suggest[hidden]{ display:none; }
-
-.chat-form{
-  display:flex; gap:0; border-top:1px solid var(--rule-soft);
-}
-.chat-input{
-  flex:1; min-width:0; min-height:56px; padding:0 20px;
-  background:transparent; color:var(--fg);
-  font-family:var(--sans); font-size:15px;
-  border:none; border-right:1px solid var(--rule-soft);
-}
-.chat-input::placeholder{ color:var(--muted); }
-.chat-input:focus{ outline:none; background:var(--hover-bg); }
-.chat-form:focus-within{ box-shadow:inset 0 0 0 2px var(--label); }
-.chat-send{
-  min-height:56px; border:none; border-radius:0; flex:none;
-  padding:0 24px; font-size:14px;
-}
-.chat-send[disabled]{ opacity:.5; cursor:not-allowed; }
+.term-input::placeholder{ color:var(--muted); }
+.term-input:focus{ outline:none; }
+.term-prompt.busy .term-caret{ opacity:.4; }
 @media (max-width:560px){
-  .chat-log{ padding:20px 18px; }
-  .chat-suggest{ padding:0 18px 16px; }
-  .chat-input{ padding:0 16px; font-size:16px; } /* 16px: stops iOS zoom on focus */
-  .chat-send{ padding:0 18px; }
+  /* 16px stops iOS zooming the whole page when the field takes focus. */
+  .term-input{ font-size:16px; }
 }
+
+/* Terminal open: freeze the page behind it so scrolling stays inside. */
+body.term-open{ overflow:hidden; }
 
 /* ── CONTENT BLOCKS (experience + projects) ───────── */
 .card{

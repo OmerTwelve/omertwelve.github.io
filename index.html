@@ -37,7 +37,6 @@
     <a class="mark" href="#top">Omer Ahmed</a>
 
     <nav class="nav-links" aria-label="Sections">
-      <a href="#ask">Ask</a>
       <a href="#work">Work</a>
       <a href="#projects">Projects</a>
       <a href="#skills">Skills</a>
@@ -50,6 +49,13 @@
         <span class="clock-sep" aria-hidden="true">·</span>
         <time id="clock-time">--:--:--</time>
       </p>
+      <button class="util-btn util-btn-cli" id="term-open" type="button"
+              aria-label="Open omer-cli — ask questions about Omer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 6l5 5-5 5" />
+          <path d="M12.5 17h7.5" />
+        </svg>
+      </button>
       <button class="util-btn" id="theme-toggle" type="button" aria-label="Switch to dark mode">
         <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
@@ -106,64 +112,6 @@
     </div>
   </section>
 
-  <!-- ASK — RAG assistant -->
-  <section class="band" id="ask">
-    <div class="wrap">
-      <div class="sec-head reveal">
-        <div class="sec-rule" aria-hidden="true"></div>
-        <div class="sec-line">
-          <h2 class="display-sm">Ask about me</h2>
-          <span class="sec-num mono">01</span>
-        </div>
-      </div>
-
-      <div class="ask-intro reveal">
-        <p class="ask-lede">
-          A retrieval-augmented assistant that answers questions about my work.
-          It only knows what is in my notes &mdash; if something isn't there, it says so
-          rather than inventing it.
-        </p>
-        <p class="ask-how mono">
-          Question embedded &rarr; nearest chunks retrieved by cosine similarity &rarr;
-          Claude answers from those chunks only
-        </p>
-      </div>
-
-      <div class="chat card reveal">
-        <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="Conversation">
-          <div class="msg msg-bot">
-            <p class="msg-who mono">Assistant</p>
-            <div class="msg-body">
-              <p>Ask me anything about Omer's experience, projects or skills.</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="chat-suggest" id="chat-suggest">
-          <button type="button" class="sugg mono">What did he do at his internship?</button>
-          <button type="button" class="sugg mono">Why did he pick Random Forest over the CNN?</button>
-          <button type="button" class="sugg mono">Has he led a team?</button>
-          <button type="button" class="sugg mono">How do I contact him?</button>
-        </div>
-
-        <form class="chat-form" id="chat-form" autocomplete="off">
-          <label class="sr-only" for="chat-input">Ask a question about Omer</label>
-          <input
-            class="chat-input"
-            id="chat-input"
-            type="text"
-            maxlength="500"
-            placeholder="Ask a question&hellip;"
-            required
-          />
-          <button class="btn btn-solid chat-send" id="chat-send" type="submit">
-            Ask <span class="arrow" aria-hidden="true">&rarr;</span>
-          </button>
-        </form>
-      </div>
-    </div>
-  </section>
-
   <!-- EXPERIENCE -->
   <section class="band" id="work">
     <div class="wrap">
@@ -171,7 +119,7 @@
         <div class="sec-rule" aria-hidden="true"></div>
         <div class="sec-line">
           <h2 class="display-sm">Experience</h2>
-          <span class="sec-num mono">02</span>
+          <span class="sec-num mono">01</span>
         </div>
       </div>
 
@@ -201,7 +149,7 @@
         <div class="sec-rule" aria-hidden="true"></div>
         <div class="sec-line">
           <h2 class="display-sm">Projects &amp; Research</h2>
-          <span class="sec-num mono">03</span>
+          <span class="sec-num mono">02</span>
         </div>
       </div>
 
@@ -283,7 +231,7 @@
         <div class="sec-rule" aria-hidden="true"></div>
         <div class="sec-line">
           <h2 class="display-sm">Skills &amp; Education</h2>
-          <span class="sec-num mono">04</span>
+          <span class="sec-num mono">03</span>
         </div>
       </div>
 
@@ -330,7 +278,7 @@
         <div class="sec-rule" aria-hidden="true"></div>
         <div class="sec-line">
           <h2 class="display-sm">Let&rsquo;s Connect</h2>
-          <span class="sec-num mono">05</span>
+          <span class="sec-num mono">04</span>
         </div>
       </div>
 
@@ -391,6 +339,63 @@
     </nav>
   </div>
 </footer>
+
+<!-- ── omer-cli ──────────────────────────────────────────────────────────
+     Full-screen terminal for the RAG assistant. Sits below the sticky nav
+     rather than over it, so the site's chrome stays put. Opened from the nav
+     button or the #terminal hash, closed with Esc or the back button. -->
+<div class="term" id="terminal" hidden>
+  <div class="term-bar term-top mono">
+    <span class="term-id">
+      <b>omer-cli</b> <span class="dim">v1.0.0 (preview)</span>
+      <span class="dim term-hide-sm">&middot; model: claude-opus-5</span>
+    </span>
+    <span class="term-top-right">
+      <span class="dim term-hide-sm">~/omer-ahmed (main)</span>
+      <button class="term-exit" id="term-close" type="button">[Esc] Exit</button>
+    </span>
+  </div>
+
+  <div class="term-scroll" id="term-scroll">
+    <pre class="term-logo" aria-hidden="true"> ██████  ███    ███ ███████ ██████
+██    ██ ████  ████ ██      ██   ██
+██    ██ ██ ████ ██ █████   ██████
+██    ██ ██  ██  ██ ██      ██   ██
+ ██████  ██      ██ ███████ ██   ██
+
+ ██████ ██      ██
+██      ██      ██
+██      ██      ██
+██      ██      ██
+ ██████ ███████ ██</pre>
+
+    <div class="term-boot mono">
+      <p><b>omer-cli v1.0.0</b> (Retrieval &amp; Engineering Preview)</p>
+      <p class="dim">Model: claude-opus-5 &middot; Retrieval: bge-small-en-v1.5 &middot; Corpus: <span id="term-chunks">&hellip;</span> chunks</p>
+      <p class="term-boot-hint">Type <b>/help</b> for commands, or ask any question about Omer.</p>
+    </div>
+
+    <div id="term-out" role="log" aria-live="polite" aria-label="Terminal output"></div>
+
+    <form class="term-prompt" id="term-form" autocomplete="off">
+      <span class="term-caret" aria-hidden="true">&rsaquo;</span>
+      <label class="sr-only" for="term-input">Type a command or a question</label>
+      <input class="term-input mono" id="term-input" type="text" maxlength="500"
+             placeholder="Type / for commands or ask anything&hellip;"
+             spellcheck="false" autocapitalize="off" />
+    </form>
+  </div>
+
+  <div class="term-bar term-bottom mono">
+    <span class="term-keys">
+      <span><b>/</b> for commands</span>
+      <span class="term-hide-sm"><b>Tab</b> to complete</span>
+      <span class="term-hide-sm"><b>&uarr;&darr;</b> for history</span>
+      <span><b>Esc</b> to exit</span>
+    </span>
+    <span class="dim">Tokens: <span id="term-tokens">0</span> &middot; Cost: $<span id="term-cost">0.0000</span></span>
+  </div>
+</div>
 
 <script src="script.js"></script>
 </body>

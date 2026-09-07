@@ -1,12 +1,13 @@
 # Portfolio — Omer Ahmed
 
-Static personal site. Three files, no build step, no dependencies.
+Static personal site — no build step, no framework. The page has no runtime
+dependencies; the assistant is a separate FastAPI service.
 
 ```
 index.html      content + structure
 styles.css      design tokens at the top, then layout, then components
 script.js       theme toggle, Abu Dhabi clock, hero EEG trace, copy-email,
-                RAG chat client, scroll reveals, nav state
+                omer-cli terminal + RAG client, scroll reveals, nav state
 assets/         avatar.png (48x48, transparent), favicon.png, apple-touch-icon.png
 
 rag/knowledge/  the assistant's source notes (markdown, one topic per "## ")
@@ -18,9 +19,25 @@ The page itself is still a dependency-free static site. The assistant is a
 separate service the page calls — the site works with the backend offline, it
 just can't answer questions.
 
-## The RAG assistant
+## omer-cli — the RAG assistant
 
-Visitors can ask the site questions about Omer. The flow:
+The assistant lives in a full-screen terminal, opened from the `>_` button in
+the nav (next to the theme toggle) or by deep link at `/#terminal`. It is not
+on the main page: the page stays a portfolio, and the terminal is a deliberate
+second surface.
+
+Terminal behaviour:
+
+- **Slash commands answer locally** — `/help`, `/whoami`, `/projects`,
+  `/skills`, `/contact`, `/clear`, `/exit`. Instant, and no API spend.
+- Anything that isn't a command is a question and goes to the backend.
+- `Tab` completes commands, `↑`/`↓` walk input history, `Esc` closes.
+- The token/cost meter is real — the backend returns `usage` from the API
+  response and the client prices it at Opus 5 list rates.
+- It sits *below* the sticky nav. `--nav-h` is measured in JS because the nav
+  wraps to two rows on narrow screens; a hardcoded height clips or gaps.
+
+The question flow:
 
 ```
 browser  --POST /api/ask-->  FastAPI
@@ -45,8 +62,8 @@ python ../rag/build_kb.py                            # writes backend/kb.json
 python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Then set `ASK_ENDPOINT` near the bottom of `script.js` to the deployed URL. It
-already points at `http://localhost:8000` when the page is served from
+Then set `ASK_ENDPOINT` in the omer-cli block of `script.js` to the deployed
+URL. It already points at `http://localhost:8000` when the page is served from
 localhost, so local development needs no edit.
 
 ### Adding to the knowledge base
@@ -89,6 +106,10 @@ built with a different model than the one configured.
   about a real person's career is the failure mode that matters here.
 - **Off-topic** — if nothing clears `MIN_SCORE`, the backend returns a fixed
   reply and never calls Claude. Cheaper, and it can't hallucinate.
+- **History** — opening pushes a `#terminal` entry so Back closes the terminal;
+  opening *by deep link* pushes nothing, so closing then strips the hash with
+  `replaceState`. Calling `history.back()` in that case navigates the visitor
+  off the site entirely.
 - **Prompt injection** — the visitor's question is treated as untrusted data.
   Note that retrieval *will* still return chunks for an injection attempt; that
   is expected, since retrieval is semantic. The defence is the system prompt,
