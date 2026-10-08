@@ -80,30 +80,31 @@ Terminal behaviour:
 - It sits *below* the sticky nav. `--nav-h` is measured in JS because the nav
   wraps to two rows on narrow screens; a hardcoded height clips or gaps.
 
-The wordmark is `assets/omer-code.webp` — 720px wide, shipped at 2x for a
-360px cap, with `width`/`height` on the `<img>` so the boot text below it
-doesn't jump when it decodes. **WebP, not PNG, on purpose:** the artwork is
-heavily anti-aliased (~90% of pixels carry partial alpha), which PNG cannot
-compress — the same image is 356 KB as RGBA PNG and 54 KB as WebP q80 with a
-measured alpha difference of zero. Quantising the PNG to 64 colours did get it
-to 33 KB, but shifted alpha by up to 50/255 and left only 17% of the
-background fully transparent instead of 43%, which shows as a haze over the
-terminal ground. If the wordmark is ever re-exported, check the alpha channel
-survived rather than just the file size.
+The wordmark is `assets/omer-code.webp` — **480px wide, displayed at a 240px
+cap, so exactly 2x for retina.** `width`/`height` are on the `<img>` so the
+boot text below doesn't jump when it decodes.
 
-The question flow:
+Three things about it are deliberate:
 
-```
-browser  --POST /api/ask-->  FastAPI
-                               |- embed the question   (bge-small, local, CPU)
-                               |- cosine over kb.json   (31 chunks, exact)
-                               |- top chunks -> Claude Opus 5
-                               '--SSE stream------------> browser
-```
+- **Size the asset to the display, not bigger.** The first version shipped at
+  720px against a 360px cap, and on narrower screens where the clamp floor
+  applied, the browser was downscaling 3.6x at render time — which smeared the
+  block edges, bevels and outline into mush. Oversizing is not free. If the CSS
+  cap changes, re-export the asset at 2x the new cap.
+- **Sharpen after downscaling.** Going 1290px -> 480px softens the hard edges
+  that make this read as pixel art, so there's an unsharp pass on **RGB only** —
+  sharpening the alpha channel crunches the outline.
+- **WebP, not PNG.** The artwork is heavily anti-aliased (~90% of pixels carry
+  partial alpha), which PNG can't compress: 356 KB as RGBA PNG vs 45 KB as
+  WebP q90, with a measured alpha difference of zero. Quantising the PNG to 64
+  colours reached 33 KB but shifted alpha by up to 50/255 and left only 17% of
+  the background fully transparent instead of 43% — a visible haze over the
+  terminal ground. If the wordmark is re-exported, check the alpha survived,
+  not just the file size.
 
-**The API key lives only in the backend.** The site is static, in a public
-repo, so anything shipped to the browser is public. That is the whole reason
-this is a service rather than a `fetch` from `script.js`.
+Note this artwork has **no consistent pixel grid** (edge-spacing analysis finds
+no dominant block size), so the rebuild-to-native-grid trick used for the
+portrait does not apply — it has to be resampled smoothly and sharpened.
 
 ### Running it
 

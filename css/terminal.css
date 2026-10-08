@@ -60,8 +60,12 @@
    doesn't jump when it decodes. */
 .term-logo{
   display:block;
-  width:clamp(200px, 34vw, 360px); height:auto;
-  margin:0 0 24px;
+  /* Capped at 240px, and the asset is exactly 2x that (480px). Oversizing the
+     asset is not free here: at 720px the browser was downscaling 3.6x at
+     render time, which smeared the block edges, bevels and outline into mush.
+     If this cap changes, re-export the asset to match 2x it. */
+  width:clamp(170px, 26vw, 240px); height:auto;
+  margin:0 0 22px;
 }
 
 .term-boot{ margin-bottom:26px; font-size:13px; line-height:1.7; }
