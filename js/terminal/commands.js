@@ -1,5 +1,5 @@
 /**
- * omer-cli slash commands.
+ * omer-code slash commands.
  *
  * These answer locally from constants — instant, and no API spend on "/help".
  * Only input that is *not* a command becomes a retrieval question.

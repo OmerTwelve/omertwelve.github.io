@@ -1,5 +1,5 @@
 /**
- * omer-cli — the terminal shell.
+ * omer-code — the terminal shell.
  *
  * Owns the DOM and the interaction model: open/close, history, tab completion,
  * and rendering. Command text lives in ./commands.js and the network in

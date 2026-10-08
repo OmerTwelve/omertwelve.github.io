@@ -18,7 +18,8 @@ js/clock.js         js/copy-email.js  js/hero-wave.js
 js/reveal.js        js/nav.js
 js/terminal/        index.js (shell) · commands.js (text) · client.js (SSE)
 
-assets/             avatar.png (48x48, transparent), favicon.png, apple-touch-icon.png
+assets/             avatar.png (48x48, transparent), favicon.png, apple-touch-icon.png,
+                    omer-code.webp (terminal wordmark)
 
 rag/knowledge/      the assistant's source notes (markdown, one topic per "## ")
 rag/build_kb.py     chunk + embed the notes -> backend/kb.json
@@ -61,7 +62,7 @@ The page itself is still a dependency-free static site. The assistant is a
 separate service the page calls — the site works with the backend offline, it
 just can't answer questions.
 
-## omer-cli — the RAG assistant
+## omer-code — the RAG assistant
 
 The assistant lives in a full-screen terminal, opened from the `>_` button in
 the nav (next to the theme toggle) or by deep link at `/#terminal`. It is not
@@ -78,6 +79,17 @@ Terminal behaviour:
   response and the client prices it at Opus 5 list rates.
 - It sits *below* the sticky nav. `--nav-h` is measured in JS because the nav
   wraps to two rows on narrow screens; a hardcoded height clips or gaps.
+
+The wordmark is `assets/omer-code.webp` — 720px wide, shipped at 2x for a
+360px cap, with `width`/`height` on the `<img>` so the boot text below it
+doesn't jump when it decodes. **WebP, not PNG, on purpose:** the artwork is
+heavily anti-aliased (~90% of pixels carry partial alpha), which PNG cannot
+compress — the same image is 356 KB as RGBA PNG and 54 KB as WebP q80 with a
+measured alpha difference of zero. Quantising the PNG to 64 colours did get it
+to 33 KB, but shifted alpha by up to 50/255 and left only 17% of the
+background fully transparent instead of 43%, which shows as a haze over the
+terminal ground. If the wordmark is ever re-exported, check the alpha channel
+survived rather than just the file size.
 
 The question flow:
 

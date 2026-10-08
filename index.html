@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Omer Ahmed — AI Engineer</title>
-<meta name="description" content="Omer Ahmed — AI Engineering graduate in Abu Dhabi. Real-time ML systems, signal processing, and production backends." />
-<meta property="og:title" content="Omer Ahmed — AI Engineer" />
+<title>Omer Ahmed | AI Engineer</title>
+<meta name="description" content="Omer Ahmed | AI Engineering graduate in Abu Dhabi. Real-time ML systems, signal processing, and production backends." />
+<meta property="og:title" content="Omer Ahmed | AI Engineer" />
 <meta property="og:description" content="Real-time ML systems, signal processing, and production backends." />
 <meta property="og:type" content="website" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -60,7 +60,7 @@
         <time id="clock-time">--:--:--</time>
       </p>
       <button class="util-btn util-btn-cli" id="term-open" type="button"
-              aria-label="Open omer-cli — ask questions about Omer">
+              aria-label="Open omer-code — ask questions about Omer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M4 6l5 5-5 5" />
           <path d="M12.5 17h7.5" />
@@ -350,14 +350,14 @@
   </div>
 </footer>
 
-<!-- ── omer-cli ──────────────────────────────────────────────────────────
+<!-- ── omer-code ──────────────────────────────────────────────────────────
      Full-screen terminal for the RAG assistant. Sits below the sticky nav
      rather than over it, so the site's chrome stays put. Opened from the nav
      button or the #terminal hash, closed with Esc or the back button. -->
 <div class="term" id="terminal" hidden>
   <div class="term-bar term-top mono">
     <span class="term-id">
-      <b>omer-cli</b> <span class="dim">v1.0.0 (preview)</span>
+      <b>omer-code</b> <span class="dim">v1.0.0 (preview)</span>
       <span class="dim term-hide-sm">&middot; model: claude-opus-5</span>
     </span>
     <span class="term-top-right">
@@ -367,20 +367,11 @@
   </div>
 
   <div class="term-scroll" id="term-scroll">
-    <pre class="term-logo" aria-hidden="true"> ██████  ███    ███ ███████ ██████
-██    ██ ████  ████ ██      ██   ██
-██    ██ ██ ████ ██ █████   ██████
-██    ██ ██  ██  ██ ██      ██   ██
- ██████  ██      ██ ███████ ██   ██
-
- ██████ ██      ██
-██      ██      ██
-██      ██      ██
-██      ██      ██
- ██████ ███████ ██</pre>
+    <img class="term-logo" src="assets/omer-code.webp" width="720" height="455"
+         alt="omer-code" decoding="async" />
 
     <div class="term-boot mono">
-      <p><b>omer-cli v1.0.0</b> (Retrieval &amp; Engineering Preview)</p>
+      <p><b>omer-code v1.0.0</b> (Retrieval &amp; Engineering Preview)</p>
       <p class="dim">Model: claude-opus-5 &middot; Retrieval: bge-small-en-v1.5 &middot; Corpus: <span id="term-chunks">&hellip;</span> chunks</p>
       <p class="term-boot-hint">Type <b>/help</b> for commands, or ask any question about Omer.</p>
     </div>

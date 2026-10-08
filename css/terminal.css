@@ -1,4 +1,4 @@
-/* ── omer-cli TERMINAL ────────────────────────────────
+/* ── omer-code TERMINAL ────────────────────────────────
    A full-screen surface that sits *below* the sticky nav rather than over it,
    so the site's chrome never disappears. --nav-h is measured in JS because the
    nav wraps to two rows on narrow screens; a hardcoded height would either
@@ -54,13 +54,14 @@
   padding:clamp(18px, 4vh, 40px) clamp(14px, 3vw, 26px) 32px;
 }
 
+/* Wordmark. The source is transparent-backed, so it sits on the terminal's
+   own ground in both themes with no plate behind it. Shipped at 2x (720px)
+   for the 360px cap, and width/height are on the <img> so the boot text below
+   doesn't jump when it decodes. */
 .term-logo{
-  margin:0 0 22px; padding:0;
-  color:var(--label);
-  font-size:clamp(6px, 1.55vw, 12px); line-height:1.05;
-  font-weight:500; white-space:pre; overflow-x:auto;
-  /* Chunky glyph shadow, echoing the blocky letterforms themselves. */
-  text-shadow:2px 2px 0 var(--rule-soft);
+  display:block;
+  width:clamp(200px, 34vw, 360px); height:auto;
+  margin:0 0 24px;
 }
 
 .term-boot{ margin-bottom:26px; font-size:13px; line-height:1.7; }
