@@ -124,6 +124,12 @@ Then set `API_BASE` in `js/config.js` to the deployed URL. It already points at
 `http://localhost:8000` when the page is served from localhost, so local
 development needs no edit.
 
+### Deploying on Cloudflare Workers
+
+See [worker/README.md](worker/README.md) for deployment commands, Worker secrets,
+rate limits, and connecting GitHub Pages to the deployed API. The Worker uses all
+portfolio notes as context instead of running the local embedding model.
+
 ### Adding to the knowledge base
 
 Drop a markdown file in `rag/knowledge/`, one topic per `## ` heading, then
