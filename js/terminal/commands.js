@@ -82,6 +82,6 @@ export function helpText() {
     entries.map(([name, s]) => `  ${name.padEnd(width)}${s}`).join("\n") +
     "\n\nAnything that isn't a command is treated as a question. It is " +
     "embedded, matched against Omer's notes by cosine similarity, and " +
-    "answered by Claude from the retrieved chunks only."
+    "answered by the language model from the retrieved chunks only."
   );
 }

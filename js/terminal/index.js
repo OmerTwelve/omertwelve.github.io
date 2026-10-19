@@ -6,7 +6,6 @@
  * ./client.js, so this file stays about behaviour.
  */
 
-import { PRICE_IN, PRICE_OUT } from "../config.js";
 import { syncNavHeight } from "../nav.js";
 import { COMMANDS, COMMAND_NAMES, helpText } from "./commands.js";
 import { askStream, fetchHealth } from "./client.js";
@@ -91,7 +90,8 @@ export function initTerminal() {
     tokensEl.textContent =
       totalTokens >= 1000 ? `${(totalTokens / 1000).toFixed(1)}k` : totalTokens;
 
-    totalCost += (input_ / 1e6) * PRICE_IN + (output / 1e6) * PRICE_OUT;
+    // Priced by the backend, which owns the rates — see config.PRICE_*_PER_M.
+    totalCost += usage.cost_usd || 0;
     costEl.textContent = totalCost.toFixed(4);
   }
 
@@ -149,6 +149,11 @@ export function initTerminal() {
     statusLoaded = true;
     const health = await fetchHealth();
     chunksEl.textContent = health?.chunks ?? "offline";
+    // The model name comes from the backend rather than being typed here, so
+    // switching provider can never leave the banner naming the wrong one.
+    document.querySelectorAll("[data-term-model]").forEach((el) => {
+      el.textContent = health?.model ?? "offline";
+    });
   }
 
   /* ── running input ──────────────────────────────── */

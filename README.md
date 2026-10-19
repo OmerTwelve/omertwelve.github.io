@@ -23,7 +23,8 @@ assets/             avatar.png (48x48, transparent), favicon.png, apple-touch-ic
 
 rag/knowledge/      the assistant's source notes (markdown, one topic per "## ")
 rag/build_kb.py     chunk + embed the notes -> backend/kb.json
-backend/            FastAPI service: retrieval + Claude, holds the API key
+backend/            FastAPI service: retrieval + DeepSeek, holds the API key
+                    (llm.py is the only file that knows about the model)
 ```
 
 ### How the frontend is organised
@@ -76,7 +77,9 @@ Terminal behaviour:
 - Anything that isn't a command is a question and goes to the backend.
 - `Tab` completes commands, `↑`/`↓` walk input history, `Esc` closes.
 - The token/cost meter is real — the backend returns `usage` from the API
-  response and the client prices it at Opus 5 list rates.
+  response and priced by the backend (`config.PRICE_*_PER_M`), which owns the
+  rates. It is an estimate, hence the `~$`: DeepSeek bills peak and off-peak
+  differently, and the configured rates are the highest published ones.
 - It sits *below* the sticky nav. `--nav-h` is measured in JS because the nav
   wraps to two rows on narrow screens; a hardcoded height clips or gaps.
 
@@ -112,9 +115,9 @@ portrait does not apply — it has to be resampled smoothly and sharpened.
 cd backend
 python -m venv .venv && .venv/Scripts/activate      # Windows
 pip install -r requirements.txt
-cp .env.example .env                                 # then paste your key in
+cp .env.example .env                                 # then set DEEPSEEK_API_KEY in it
 python ../rag/build_kb.py                            # writes backend/kb.json
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --no-proxy-headers
 ```
 
 Then set `API_BASE` in `js/config.js` to the deployed URL. It already points at
@@ -129,22 +132,52 @@ becomes one retrievable chunk, so write each as a self-contained answer to a
 question someone would actually ask — the heading is embedded along with the
 body, so it carries the topic.
 
-### Retrieval thresholds are measured, not guessed
+### Retrieval: the relevance floor is a cost decision, not a gap
 
-`config.MIN_SCORE` and `REL_MARGIN` exist because one global cutoff cannot do
-the job. bge-small has a compressed similarity range — measured on this corpus,
-real questions score **0.56–0.78** against their correct chunk while off-topic
-questions ("what is the capital of France?") still reach **0.45–0.46** against
-their best one.
+bge-small has a compressed similarity range, and on a hand-written set of
+questions (`rag/eval_retrieval.py`: 18 on-topic, 8 off-topic) the two classes
+**overlap**. On-topic best scores run 0.48–0.82, off-topic 0.41–0.62 — *"Explain
+how quantum computing works"* scores 0.62, above the weakest real question. No
+single threshold separates them, so `MIN_SCORE` is set by what each mistake
+costs:
 
-- `MIN_SCORE = 0.50` sits in that gap and answers "do we know anything about
-  this at all". Set it to 0.62 and *"what did he do at his internship?"* (0.56)
-  retrieves nothing — a question worth answering.
-- `REL_MARGIN = 0.12` then keeps only chunks close to the best hit. A fixed
-  cutoff can't: 0.62 is filler beneath a 0.75 top hit, but the only answer
-  beneath a 0.56 one.
+- **False rejection** (a real question gets "I don't have anything on that"):
+  the bot looks broken, in front of exactly the person the site is for.
+  Expensive.
+- **False acceptance** (an off-topic question reaches the model): about $0.0004,
+  and the model declines it — checked against injection and off-topic probes.
+  Cheap.
 
-Re-measure both if the embedding model or the corpus changes materially.
+So the floor sits low. At the old `0.50`, *"what's his proudest accomplishment?"*
+(0.482) and *"most impressive thing he shipped?"* (0.487) were wrongly
+rejected; at `0.45` the eval shows **0/18** false rejections, at the price of 3/8
+off-topic questions reaching the model. The sample is small — treat 0.45 as a
+reasonable setting, not a precise one, and **re-run the eval after any change to
+the notes**:
+
+```bash
+python rag/eval_retrieval.py      # exits non-zero if a real question would be rejected
+```
+
+`REL_MARGIN = 0.12` then keeps only chunks close to the best hit, which a fixed
+cutoff can't do: 0.62 is filler beneath a 0.75 top hit but the only answer
+beneath a 0.56 one.
+
+Two things that did *not* work, so nobody retries them:
+
+- **Anchoring the query** (`"Omer Ahmed: <question>"`) lifts on-topic scores
+  (0.48 → 0.64) but lifts off-topic ones just as much ("capital of France"
+  0.45 → 0.67), so separation barely moves (−0.136 → −0.060, still negative).
+- **A tighter floor** just trades the cheap error for the expensive one.
+
+**Vague questions need a curated chunk.** "Biggest win", "most impressive thing"
+match no specific chunk — every profile chunk scores about the same — so the
+actual answer (the 2.5s → 0.02s latency fix) was crowded out of the top 5.
+`01-profile.md` carries a section whose *heading* uses the words people actually
+type ("biggest achievements, standout results, most impressive work") and whose
+body restates the headline numbers, all drawn from the other notes. When a new
+kind of question fails, the fix is usually another chunk like that, not a
+threshold.
 
 ### The embedding model must match on both sides
 
@@ -160,7 +193,8 @@ built with a different model than the one configured.
   and requires saying so plainly when the answer isn't there. Inventing a fact
   about a real person's career is the failure mode that matters here.
 - **Off-topic** — if nothing clears `MIN_SCORE`, the backend returns a fixed
-  reply and never calls Claude. Cheaper, and it can't hallucinate.
+  reply and never calls the model. Faster (0.3s vs ~1.7s), and it can't
+  hallucinate.
 - **History** — opening pushes a `#terminal` entry so Back closes the terminal;
   opening *by deep link* pushes nothing, so closing then strips the hash with
   `replaceState`. Calling `history.back()` in that case navigates the visitor
@@ -169,15 +203,72 @@ built with a different model than the one configured.
   Note that retrieval *will* still return chunks for an injection attempt; that
   is expected, since retrieval is semantic. The defence is the system prompt,
   not the retriever.
-- **Rate limits** — 6/min and 60/day per IP, in-process. Single instance only:
-  run more than one worker and each gets its own counters, so the effective
-  limit multiplies. Move to Redis before scaling out.
-- **Cost** — `max_tokens` 800 and `effort: low`, suited to short grounded
-  answers. Thinking is left on: lowering effort is the documented way to cut
-  cost on Opus 5, whereas disabling thinking has its own failure modes.
-- **Refusal fallback** — a policy decline retries on `claude-opus-4-8` inside
-  the same call so a visitor doesn't get a dead stream. Set
-  `USE_REFUSAL_FALLBACK=false` to drop it.
+- **Rate limits** — `backend/ratelimit.py`, three limits checked together:
+  6/min and 60/day **per client**, and 400/day **globally**
+  (`RATE_PER_MINUTE`, `RATE_PER_DAY`, `GLOBAL_PER_DAY`). The global one is the
+  limit that still holds when the per-client ones are dodged by many addresses,
+  and it is what actually bounds spend — set it from the cost-per-answer you
+  read off the terminal's usage meter. A refusal returns `429` with a
+  `Retry-After` header and a message saying how long to wait (or to email Omer
+  when the daily cap is spent).
+
+  Details that matter:
+
+  - **Forwarding headers are ignored by default.** The client address is the
+    socket peer unless `CLIENT_IP_HEADER` is set. A header is
+    attacker-controlled unless a proxy *you run* overwrites it, so trusting one
+    by default lets a script send a fresh fake `X-Forwarded-For` per request and
+    never hit a limit. Set it only when the backend is reachable *exclusively*
+    through that proxy — e.g. `cf-connecting-ip` behind a Cloudflare tunnel. For
+    `X-Forwarded-For` the **rightmost** entry is used, because each proxy
+    appends; everything left of it was client-supplied. Behind a tunnel with the
+    setting left empty, all visitors share one bucket (annoying, not costly),
+    and the backend logs a warning saying so.
+  - **Run uvicorn with `--no-proxy-headers`.** Uvicorn has its own
+    proxy-header handling, on by default: for a peer in `--forwarded-allow-ips`
+    (default `127.0.0.1`) it overwrites the request's client address from
+    `X-Forwarded-For` *before this app sees it*. That bypasses the
+    `CLIENT_IP_HEADER` decision above — found the hard way, when a test client
+    on `127.0.0.1` could rotate a fake header and defeat the limiter. With the
+    flag, `ratelimit.py` is the single place that decides who a client is.
+    **After deploying, verify it:** hit the endpoint from two different
+    networks (home Wi-Fi and phone data) and confirm they get separate
+    quotas. If they share one, the header isn't reaching the app and the
+    backend log will say so.
+  - **IPv6 is bucketed by /64**, since one subscriber is routinely handed a
+    whole /64 and could otherwise rotate through 2^64 fresh quotas.
+  - **Memory is bounded.** Only *accepted* requests create entries, so the
+    table can't exceed `GLOBAL_PER_DAY`; a periodic sweep frees clients that
+    never return. (The previous version allocated an entry for every rejected
+    request and only freed *empty* ones, which a one-time address never became.)
+  - **A global refusal doesn't charge the client's own quota.**
+  - **In-process state, single worker only.** More than one worker means each
+    gets its own counters and every limit multiplies by the worker count. Move
+    the counters to Redis before scaling out.
+
+  Tests are stdlib-only with an injected clock, so window boundaries are exact
+  and nothing sleeps:
+
+  ```bash
+  cd backend && python -m unittest discover -s tests -v
+  ```
+- **Thinking is off, and that is measured.** `deepseek-flash` reasons by
+  default, and the reasoning tokens count against `max_tokens`. Same question,
+  `deepseek-flash`: with `max_tokens=60` the thinking run returned an **empty
+  answer** (`finish_reason=length`, 329 characters of reasoning, none of
+  content) where the non-thinking run finished in 42 tokens; at `max_tokens=800`
+  it was 1.8s / 116 tokens with thinking vs 1.1s / 52 without. Grounded Q&A over
+  a few retrieved paragraphs gains nothing from reasoning, so it is disabled via
+  `extra_body={"thinking": {"type": "disabled"}}`. Set `DEEPSEEK_THINKING=true`
+  to restore it.
+- **Use `deepseek-flash`, not `deepseek-chat`.** `deepseek-chat` still works but
+  DeepSeek's API reports it as *served by* `deepseek-flash`, and it is absent from
+  both the docs and `/models` — a legacy alias that can be withdrawn without
+  notice. (It was also the non-thinking one, which is why switching names means
+  you must switch thinking off explicitly.) knowladge-feed still uses it.
+- **Cost** — about $0.0003–0.0005 per answer (roughly 650–1,300 tokens in, 50–140
+  out). `GLOBAL_PER_DAY=400` therefore bounds worst-case spend to well under a
+  dollar a day; raise it if real traffic ever needs more.
 
 ## The portrait
 
