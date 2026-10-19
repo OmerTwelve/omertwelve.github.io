@@ -7,7 +7,7 @@
 export const API_BASE =
   location.hostname === "localhost" || location.hostname === "127.0.0.1"
     ? "http://localhost:8000"
-    : "https://REPLACE-WITH-YOUR-BACKEND-HOST";
+    : "https://omertwelve-github-io.amory30900.workers.dev";
 
 export const ASK_ENDPOINT = `${API_BASE}/api/ask`;
 export const HEALTH_ENDPOINT = `${API_BASE}/api/health`;
