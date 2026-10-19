@@ -28,8 +28,15 @@ plan availability and usage pricing before deploying.
 
 `backend/.env` is local to the Python service and is not read or uploaded here.
 Public settings are in `wrangler.jsonc`: `GLOBAL_PER_DAY=400`, `RATE_PER_DAY=60`,
+`TOKEN_PER_DAY=100000` (input plus output per IP over a rolling 24 hours),
 `RATE_PER_MINUTE=6`, allowed origins, model, and cost-meter prices. Adjust these
 there before deployment; the price values are estimates, not billing limits.
+
+Token budgets reserve a conservative UTF-8-byte estimate of the full prompt,
+message framing, and the maximum 800-token reply before calling DeepSeek.
+Reported input/output usage reconciles the reservation after streaming. Failed
+requests or missing usage retain the reservation, so enforcement can stop early
+near the cap. Shared-IP visitors share a budget. Existing request limits remain.
 
 Wrangler prints a URL such as
 `https://omer-portfolio-assistant.YOUR-SUBDOMAIN.workers.dev`.
